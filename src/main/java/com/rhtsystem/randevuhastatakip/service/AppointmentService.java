@@ -10,7 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Transactional; // ÖNEMLİ
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,7 +22,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
-    private final UserRepository userRepository; // Giriş yapmış kullanıcıyı almak için
+    private final UserRepository userRepository;
 
     @Autowired
     public AppointmentService(AppointmentRepository appointmentRepository,
@@ -36,6 +36,8 @@ public class AppointmentService {
     }
 
     // --- Yardımcı Metodlar ---
+    // Bu metodlar genellikle @Transactional gerektirmez çünkü DB'ye yazmazlar
+    // ve çağıran metod zaten bir transaction içinde olabilir.
     private User getCurrentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
@@ -60,15 +62,12 @@ public class AppointmentService {
 
     // --- Hasta İşlemleri ---
 
-    @Transactional
+    @Transactional // Yazma işlemi
     public Appointment createAppointment(Long doctorId, LocalDateTime appointmentDateTime) throws Exception {
         Patient currentPatient = getCurrentAuthenticatedPatient();
         Doctor doctor = doctorRepository.findById(doctorId)
                 .orElseThrow(() -> new IllegalArgumentException("Doctor not found with ID: " + doctorId));
 
-        // Çakışma kontrolü (Aynı doktor, aynı saat)
-        // Appointment entity'sindeki @UniqueConstraint bunu DB seviyesinde zaten engeller.
-        // Ama yine de servis seviyesinde bir kontrol eklemek iyi bir pratiktir.
         List<AppointmentStatus> activeStatuses = List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED);
         boolean appointmentExists = appointmentRepository.existsByDoctorAndAppointmentDateTimeAndStatusIn(doctor, appointmentDateTime, activeStatuses);
 
@@ -76,8 +75,6 @@ public class AppointmentService {
             throw new Exception("Selected time slot is not available for this doctor.");
         }
 
-        // TODO: Daha detaylı çakışma kontrolü eklenebilir. Örneğin, doktorun çalışma saatleri, randevu aralıkları vs.
-        // TODO: Randevu saatinin geçmiş bir tarih olmaması kontrolü eklenebilir.
         if (appointmentDateTime.isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Appointment date and time cannot be in the past.");
         }
@@ -86,27 +83,30 @@ public class AppointmentService {
         appointment.setPatient(currentPatient);
         appointment.setDoctor(doctor);
         appointment.setAppointmentDateTime(appointmentDateTime);
-        appointment.setStatus(AppointmentStatus.PENDING); // Varsayılan durum
+        // appointment.setStatus(AppointmentStatus.PENDING); // @PrePersist bunu yapıyor
 
         return appointmentRepository.save(appointment);
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi
     public List<Appointment> getMyAppointmentsAsPatient() {
         Patient currentPatient = getCurrentAuthenticatedPatient();
         return appointmentRepository.findByPatientOrderByAppointmentDateTimeDesc(currentPatient);
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi
     public List<Appointment> getMyUpcomingAppointmentsAsPatient() {
         Patient currentPatient = getCurrentAuthenticatedPatient();
         return appointmentRepository.findByPatientAndAppointmentDateTimeAfterOrderByAppointmentDateTimeAsc(currentPatient, LocalDateTime.now());
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi (Hata burada çıkıyordu)
     public List<Appointment> getMyPastAppointmentsAsPatient() {
         Patient currentPatient = getCurrentAuthenticatedPatient();
         return appointmentRepository.findByPatientAndAppointmentDateTimeBeforeOrderByAppointmentDateTimeDesc(currentPatient, LocalDateTime.now());
     }
 
-    @Transactional
+    @Transactional // Yazma işlemi
     public Appointment cancelAppointmentAsPatient(Long appointmentId) throws Exception {
         Patient currentPatient = getCurrentAuthenticatedPatient();
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -116,8 +116,6 @@ public class AppointmentService {
             throw new IllegalAccessException("You are not authorized to cancel this appointment.");
         }
 
-        // Sadece belirli durumlardaki randevular iptal edilebilir (örn: PENDING, CONFIRMED)
-        // İptal süresi kısıtı da eklenebilir (örn: randevuya 24 saatten az kala iptal edilemez)
         if (appointment.getStatus() == AppointmentStatus.PENDING || appointment.getStatus() == AppointmentStatus.CONFIRMED) {
             appointment.setStatus(AppointmentStatus.CANCELLED);
             return appointmentRepository.save(appointment);
@@ -129,21 +127,24 @@ public class AppointmentService {
 
     // --- Doktor İşlemleri ---
 
+    @Transactional(readOnly = true) // Okuma işlemi
     public List<Appointment> getMyAppointmentsAsDoctor() {
         Doctor currentDoctor = getCurrentAuthenticatedDoctor();
         return appointmentRepository.findByDoctorOrderByAppointmentDateTimeAsc(currentDoctor);
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi
     public List<Appointment> getMyAppointmentsByStatusAsDoctor(AppointmentStatus status) {
         Doctor currentDoctor = getCurrentAuthenticatedDoctor();
         return appointmentRepository.findByDoctorAndStatusOrderByAppointmentDateTimeAsc(currentDoctor, status);
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi
     public List<Appointment> getMyPendingAppointmentsAsDoctor() {
         return getMyAppointmentsByStatusAsDoctor(AppointmentStatus.PENDING);
     }
 
-    @Transactional
+    @Transactional // Yazma işlemi
     public Appointment confirmAppointment(Long appointmentId) throws Exception {
         Doctor currentDoctor = getCurrentAuthenticatedDoctor();
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -161,7 +162,7 @@ public class AppointmentService {
         }
     }
 
-    @Transactional
+    @Transactional // Yazma işlemi
     public Appointment rejectAppointment(Long appointmentId) throws Exception {
         Doctor currentDoctor = getCurrentAuthenticatedDoctor();
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -173,15 +174,13 @@ public class AppointmentService {
 
         if (appointment.getStatus() == AppointmentStatus.PENDING) {
             appointment.setStatus(AppointmentStatus.REJECTED);
-            // İsteğe bağlı olarak reddetme notu da eklenebilir.
-            // appointment.setDoctorNotes("Doktor uygun değil.");
             return appointmentRepository.save(appointment);
         } else {
             throw new IllegalStateException("Only PENDING appointments can be rejected. Current status: " + appointment.getStatus());
         }
     }
 
-    @Transactional
+    @Transactional // Yazma işlemi
     public Appointment addOrUpdateDoctorNote(Long appointmentId, String notes) throws Exception {
         Doctor currentDoctor = getCurrentAuthenticatedDoctor();
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -191,7 +190,6 @@ public class AppointmentService {
             throw new IllegalAccessException("You are not authorized to add notes to this appointment.");
         }
 
-        // Notlar genellikle onaylanmış veya tamamlanmış randevulara eklenir.
         if (appointment.getStatus() == AppointmentStatus.CONFIRMED /* || appointment.getStatus() == AppointmentStatus.COMPLETED */) {
             appointment.setDoctorNotes(notes);
             return appointmentRepository.save(appointment);
@@ -200,15 +198,20 @@ public class AppointmentService {
         }
     }
 
-    // --- Genel Sorgular (Belki admin için veya listeleme için) ---
+    // --- Genel Sorgular ---
+    @Transactional(readOnly = true) // Okuma işlemi
     public Optional<Appointment> getAppointmentById(Long appointmentId) {
+        // Bu metodun çağıranı, doktorun bu randevuya erişim yetkisi olup olmadığını kontrol etmeli.
+        // Veya burada ek bir yetki kontrolü yapılabilir.
         return appointmentRepository.findById(appointmentId);
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi (genellikle LOB içermez ama alışkanlık)
     public List<Doctor> getAllDoctors() {
         return doctorRepository.findAll();
     }
 
+    @Transactional(readOnly = true) // Okuma işlemi
     public List<Doctor> findDoctorsBySpecialization(String specialization) {
         return doctorRepository.findBySpecialization(specialization);
     }
