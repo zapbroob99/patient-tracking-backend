@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Randevularım</title>
+</head>
+<body>
+    <div layout:fragment="content" class="container mt-4">
+        <h2>Randevularım</h2>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+        <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+
+        <a th:href="@{/patient/appointments/new}" class="btn btn-primary mb-3">Yeni Randevu Al</a>
+
+        <h3>Yaklaşan Randevular</h3>
+        <table class="table table-striped" th:if="${not #lists.isEmpty(upcomingAppointments)}">
+            <thead>
+                <tr>
+                    <th>Doktor</th>
+                    <th>Uzmanlık</th>
+                    <th>Tarih ve Saat</th>
+                    <th>Durum</th>
+                    <th>Doktor Notları</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="app : ${upcomingAppointments}">
+                    <td th:text="${app.doctor.user.firstName + ' ' + app.doctor.user.lastName}"></td>
+                    <td th:text="${app.doctor.specialization}"></td>
+                    <td th:text="${#temporals.format(app.appointmentDateTime, 'dd-MM-yyyy HH:mm')}"></td>
+                    <td th:text="${app.status.name()}"></td>
+                    <td th:text="${app.doctorNotes}"></td>
+                    <td>
+                        <form th:if="${app.status.name() == 'PENDING' or app.status.name() == 'CONFIRMED'}"
+                              th:action="@{/patient/appointments/cancel/{id}(id=${app.id})}" method="post"
+                              onsubmit="return confirm('Bu randevuyu iptal etmek istediğinizden emin misiniz?');">
+                            <button type="submit" class="btn btn-danger btn-sm">İptal Et</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p th:if="${#lists.isEmpty(upcomingAppointments)}">Yaklaşan randevunuz bulunmamaktadır.</p>
+
+        <hr/>
+
+        <h3>Geçmiş Randevular</h3>
+        <table class="table table-striped" th:if="${not #lists.isEmpty(pastAppointments)}">
+            <thead>
+                <tr>
+                    <th>Doktor</th>
+                    <th>Uzmanlık</th>
+                    <th>Tarih ve Saat</th>
+                    <th>Durum</th>
+                    <th>Doktor Notları</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="app : ${pastAppointments}">
+                    <td th:text="${app.doctor.user.firstName + ' ' + app.doctor.user.lastName}"></td>
+                    <td th:text="${app.doctor.specialization}"></td>
+                    <td th:text="${#temporals.format(app.appointmentDateTime, 'dd-MM-yyyy HH:mm')}"></td>
+                    <td th:text="${app.status.name()}"></td>
+                    <td th:text="${app.doctorNotes}"></td>
+                </tr>
+            </tbody>
+        </table>
+        <p th:if="${#lists.isEmpty(pastAppointments)}">Geçmiş randevunuz bulunmamaktadır.</p>
+    </div>
+</body>
+</html>

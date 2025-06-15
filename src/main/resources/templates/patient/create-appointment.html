@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}"> <!-- Ana layout'u kullanacağız (henüz yok) -->
+<head>
+    <title>Yeni Randevu Al</title>
+</head>
+<body>
+    <div layout:fragment="content" class="container mt-4">
+        <h2>Yeni Randevu Al</h2>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+        <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+
+        <!-- Uzmanlık Filtresi Formu -->
+        <form th:action="@{/patient/appointments/new}" method="get" class="mb-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="specializationFilter" class="form-label">Uzmanlık Alanına Göre Filtrele:</label>
+                    <select id="specializationFilter" name="specialization" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tüm Uzmanlıklar</option>
+                        <option th:each="spec : ${specializations}"
+                                th:value="${spec}"
+                                th:text="${spec}"
+                                th:selected="${spec == selectedSpecialization}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <form th:action="@{/patient/appointments/create}" th:object="${appointmentRequest}" method="post">
+            <div class="mb-3">
+                <label for="doctorId" class="form-label">Doktor Seçiniz:</label>
+                <select id="doctorId" th:field="*{doctorId}" class="form-select" required>
+                    <option value="">Doktor Seçiniz...</option>
+                    <option th:each="doctor : ${doctors}"
+                            th:value="${doctor.id}"
+                            th:text="${doctor.fullName + ' - ' + doctor.specialization}">
+                    </option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="appointmentDateTime" class="form-label">Randevu Tarihi ve Saati:</label>
+                <input type="datetime-local" id="appointmentDateTime" th:field="*{appointmentDateTime}"
+                       class="form-control" th:min="${minDateTime}" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Randevu Al</button>
+            <a th:href="@{/patient/dashboard}" class="btn btn-secondary">İptal</a>
+        </form>
+    </div>
+</body>
+</html>

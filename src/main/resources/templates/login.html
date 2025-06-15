@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}"> <!-- Ana layout'u kullanalım -->
+<head>
+    <title>Giriş Yap</title>
+</head>
+<body>
+    <div layout:fragment="content" class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <h2 class="card-title text-center mb-4">Sisteme Giriş</h2>
+
+                        <!-- Hata Mesajları -->
+                        <div th:if="${param.error}" class="alert alert-danger" role="alert">
+                            Hatalı kullanıcı adı veya şifre.
+                        </div>
+                        <div th:if="${param.logout}" class="alert alert-success" role="alert">
+                            Başarıyla çıkış yapıldı.
+                        </div>
+                        <!-- Kayıt Başarılı Mesajı -->
+                        <div th:if="${param.registered != null || successMessage != null}" class="alert alert-success" role="alert">
+                            Kayıt başarılı! Lütfen giriş yapınız.
+                            <span th:if="${successMessage}" th:text="${successMessage}"></span>
+                        </div>
+
+
+                        <form th:action="@{/login}" method="post">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Kullanıcı Adı:</label>
+                                <input type="text" id="username" name="username" class="form-control" required autofocus />
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Şifre:</label>
+                                <input type="password" id="password" name="password" class="form-control" required />
+                            </div>
+                            <!-- "Beni Hatırla" seçeneği (Opsiyonel) -->
+                            <!--
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" id="remember-me" name="remember-me" class="form-check-input" />
+                                <label for="remember-me" class="form-check-label">Beni Hatırla</label>
+                            </div>
+                            -->
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
+                            </div>
+                        </form>
+                        <hr class="my-4">
+                        <p class="text-center">
+                            Hesabınız yok mu? <a th:href="@{/register}">Hemen Kayıt Olun</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

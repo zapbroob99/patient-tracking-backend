@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Hasta Paneli</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Hasta Paneli</h2>
+    <p>Hoş geldiniz, <span sec:authentication="principal.username">Kullanıcı</span>!</p> <!-- Giriş yapan kullanıcıyı gösterir -->
+
+    <div class="list-group">
+        <a th:href="@{/patient/appointments/new}" class="list-group-item list-group-item-action">Yeni Randevu Al</a>
+        <a th:href="@{/patient/appointments/my}" class="list-group-item list-group-item-action">Randevularımı Görüntüle</a>
+        <!-- Diğer hasta işlemleri buraya eklenebilir -->
+    </div>
+
+    <h3>Yaklaşan Randevularınız</h3>
+    <table class="table table-striped" th:if="${not #lists.isEmpty(upcomingAppointments)}">
+        <thead>
+        <tr>
+            <th>Doktor</th>
+            <th>Tarih ve Saat</th>
+            <th>Durum</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="app : ${upcomingAppointments}">
+            <td th:text="${app.doctor.user.firstName + ' ' + app.doctor.user.lastName}"></td>
+            <td th:text="${#temporals.format(app.appointmentDateTime, 'dd-MM-yyyy HH:mm')}"></td>
+            <td th:text="${app.status.name()}"></td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(upcomingAppointments)}">Yaklaşan randevunuz bulunmamaktadır.</p>
+
+</div>
+</body>
+</html>
