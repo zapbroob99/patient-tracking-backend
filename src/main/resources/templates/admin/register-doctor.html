@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Yeni Doktor Kaydet</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Yeni Doktor Kayıt Formu</h2>
+
+    <div th:if="${registrationError}" class="alert alert-danger" role="alert" th:text="${registrationError}"></div>
+    <div th:if="${passwordError}" class="alert alert-danger" role="alert" th:text="${passwordError}"></div>
+    <div th:if="${specializationError}" class="alert alert-danger" role="alert" th:text="${specializationError}"></div>
+
+
+    <form th:action="@{/admin/doctors/register}" th:object="${doctorDto}" method="post" class="mt-3 card p-4 shadow-sm">
+        <div class="mb-3">
+            <label for="username" class="form-label">Kullanıcı Adı (Doktor için e-posta veya benzersiz bir ID):</label>
+            <input type="text" id="username" th:field="*{username}" class="form-control" required />
+            <!-- <span th:if="${#fields.hasErrors('username')}" th:errors="*{username}" class="text-danger d-block mt-1"></span> -->
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="password" class="form-label">Şifre:</label>
+                <input type="password" id="password" th:field="*{password}" class="form-control" required />
+                <!-- <span th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="text-danger d-block mt-1"></span> -->
+            </div>
+            <div class="col-md-6">
+                <label for="confirmPassword" class="form-label">Şifre Tekrar:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" required />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="firstName" class="form-label">Ad:</label>
+                <input type="text" id="firstName" th:field="*{firstName}" class="form-control" required />
+                <!-- <span th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}" class="text-danger d-block mt-1"></span> -->
+            </div>
+            <div class="col-md-6">
+                <label for="lastName" class="form-label">Soyad:</label>
+                <input type="text" id="lastName" th:field="*{lastName}" class="form-control" required />
+                <!-- <span th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}" class="text-danger d-block mt-1"></span> -->
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="specialization" class="form-label">Uzmanlık Alanı:</label>
+            <select id="specialization" th:field="*{specialization}" class="form-select" required>
+                <option value="">Uzmanlık Seçiniz...</option>
+                <option th:each="spec : ${specializations}" th:value="${spec}" th:text="${spec}"></option>
+            </select>
+            <!-- <span th:if="${#fields.hasErrors('specialization')}" th:errors="*{specialization}" class="text-danger d-block mt-1"></span> -->
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Doktoru Kaydet
+            </button>
+            <a th:href="@{/admin/dashboard}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> İptal
+            </a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

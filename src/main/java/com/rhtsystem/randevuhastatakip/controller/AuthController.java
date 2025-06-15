@@ -6,14 +6,14 @@ import com.rhtsystem.randevuhastatakip.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult; // Validasyon için
+// import org.springframework.validation.BindingResult; // Validasyon için
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Optional;
-// import jakarta.validation.Valid; // Validasyon için
+// import jakarta.validation.Valid;
 
 @Controller
 public class AuthController {
@@ -25,79 +25,66 @@ public class AuthController {
         this.userService = userService;
     }
 
-    // Login sayfasını göstermek için (Spring Security varsayılanını kullanıyorsak bu gerekmeyebilir,
-    // ama özel bir login sayfamız olursa diye)
     @GetMapping("/login")
-    public String loginPage() {
-        return "login"; // login.html (henüz oluşturmadık, varsayılanı kullanıyoruz)
+    public String loginPage(Model model, String error, String logout, String registered, String successMessage) {
+        // Bu parametreler SecurityConfig'den veya redirect'lerden gelebilir.
+        // Thymeleaf'te ${param.error}, ${param.logout}, ${param.registered} ile yakalanabilir.
+        // Flash attribute olarak gelen successMessage'ı da model'e ekleyelim.
+        if (successMessage != null) {
+            model.addAttribute("successMessage", successMessage);
+        }
+        return "login";
     }
 
     @GetMapping("/register")
     public String showRegistrationForm(Model model) {
-        // Form için boş bir DTO nesnesi ekleyelim
         model.addAttribute("userDto", new UserRegistrationDto());
-        return "register"; // register.html
+        return "register";
     }
 
     @PostMapping("/register")
     public String processRegistration(
-            // @Valid // DTO'daki validasyonları aktif etmek için
+            // @Valid
             @ModelAttribute("userDto") UserRegistrationDto userDto,
-            BindingResult result, // Validasyon sonuçları için
+            // BindingResult result, // Validasyon için
             Model model,
             RedirectAttributes redirectAttributes) {
 
-        // Validasyon hataları varsa formu tekrar göster
-        // if (result.hasErrors()) {
-        //     model.addAttribute("userDto", userDto); // Hatalı verilerle formu doldur
+        // if (result.hasErrors()) { // Validasyon için
+        //     model.addAttribute("userDto", userDto);
         //     return "register";
         // }
 
-        // Şifre ve şifre teyidini kontrol et
-        if (!userDto.getPassword().equals(userDto.getConfirmPassword())) {
-            // result.rejectValue("confirmPassword", "userDto.confirmPassword", "Şifreler uyuşmuyor!");
+        if (userDto.getPassword() == null || userDto.getConfirmPassword() == null || !userDto.getPassword().equals(userDto.getConfirmPassword())) {
             model.addAttribute("userDto", userDto);
-            model.addAttribute("passwordError", "Şifreler uyuşmuyor!");
+            model.addAttribute("passwordError", "Şifreler uyuşmuyor veya boş bırakılmış!");
             return "register";
         }
-
-        // Doktor rolü seçilmişse uzmanlık alanı zorunlu mu kontrol et
-        if (UserService.ROLE_DOKTOR.equals("ROLE_" + userDto.getRole().toUpperCase())) {
-            if (userDto.getSpecialization() == null || userDto.getSpecialization().trim().isEmpty()) {
-                model.addAttribute("userDto", userDto);
-                model.addAttribute("specializationError", "Doktor için uzmanlık alanı zorunludur!");
-                return "register";
-            }
-        }
-
 
         try {
             User newUser = new User();
             newUser.setUsername(userDto.getUsername());
-            newUser.setPassword(userDto.getPassword()); // Şifre serviste hash'lenecek
+            newUser.setPassword(userDto.getPassword());
             newUser.setFirstName(userDto.getFirstName());
             newUser.setLastName(userDto.getLastName());
 
-            String roleName = "ROLE_" + userDto.getRole().toUpperCase(); // ROLE_HASTA veya ROLE_DOKTOR
-            Optional<String> specialization = UserService.ROLE_DOKTOR.equals(roleName) ?
-                                              Optional.ofNullable(userDto.getSpecialization()) :
-                                              Optional.empty();
-
-            userService.registerNewUser(newUser, roleName, specialization);
+            // Genel kayıt sadece HASTA rolü için olacak.
+            // UserService.registerNewUser metoduna ROLE_HASTA_PREFIXED gönderiyoruz.
+            userService.registerNewUser(newUser, UserService.ROLE_HASTA_PREFIXED, Optional.empty());
 
             redirectAttributes.addFlashAttribute("successMessage", "Kayıt başarılı! Lütfen giriş yapınız.");
-            return "redirect:/login?registered"; // Başarılı kayıt sonrası login sayfasına yönlendir
+            return "redirect:/login"; // ?registered parametresini kaldırdık, successMessage flash attribute ile taşınıyor
 
-        } catch (IllegalArgumentException e) { // Örneğin specialization zorunlu hatası
-             model.addAttribute("userDto", userDto);
-             model.addAttribute("registrationError", e.getMessage());
-             return "register";
         } catch (Exception e) {
-            // Kullanıcı adı zaten alınmış gibi hatalar
             model.addAttribute("userDto", userDto);
             model.addAttribute("registrationError", e.getMessage());
-            // result.rejectValue("username", "userDto.username", e.getMessage());
             return "register";
         }
+    }
+
+    // Yetkisiz erişim durumunda gösterilecek sayfa
+    @GetMapping("/access-denied")
+    public String accessDeniedPage() {
+        return "error/access-denied"; // error/access-denied.html
     }
 }

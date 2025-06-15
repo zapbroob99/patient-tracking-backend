@@ -1,7 +1,7 @@
 package com.rhtsystem.randevuhastatakip.config;
 
 import com.rhtsystem.randevuhastatakip.service.UserDetailsServiceImpl;
-import com.rhtsystem.randevuhastatakip.service.UserService; // UserService'deki rol sabitleri için
+import com.rhtsystem.randevuhastatakip.service.UserService; // Rol sabitleri için
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebSecurity // Spring Security'yi web uygulaması için etkinleştirir
-@EnableMethodSecurity(prePostEnabled = true) // Metod seviyesinde güvenlik (@PreAuthorize vb.) için
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -30,41 +30,40 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Geliştirme için CSRF'i kapattık, production'da açılabilir.
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers(
-                        "/", // Ana sayfa
-                        "/home", // Home yönlendirmesi için
+                        "/",
+                        "/home",
                         "/login",
-                        "/register",
+                        "/register", // Genel hasta kaydı
                         "/css/**",
                         "/js/**",
                         "/images/**",
-                        "/error" // Hata sayfaları için
-                ).permitAll() // Bu path'lere herkes erişebilir
-
-                // Örnek: Admin rolü için bir path (ileride gerekirse)
-                // .requestMatchers("/admin/**").hasRole(UserService.ROLE_ADMIN_KISA_AD) // ROLE_ADMIN'in "ADMIN" kısmı
-
-                // Diğer tüm istekler kimlik doğrulama gerektirir
+                        "/error"
+                ).permitAll()
+                // Rol bazlı erişimler (hasRole metodu prefix'siz rol adı bekler: "ADMIN", "HASTA", "DOKTOR")
+                .requestMatchers("/admin/**").hasRole(UserService.ROLE_ADMIN)
+                .requestMatchers("/patient/**").hasRole(UserService.ROLE_HASTA)
+                .requestMatchers("/doctor/**").hasRole(UserService.ROLE_DOKTOR)
                 .anyRequest().authenticated()
             )
             .formLogin(formLogin -> formLogin
-                .loginPage("/login") // Özel login sayfamızın yolu (Spring'in varsayılanı yerine)
-                .permitAll() // Login sayfasına herkes erişebilir
-                .defaultSuccessUrl("/home", true) // Başarılı giriş sonrası yönlendirilecek varsayılan URL
-                .failureUrl("/login?error=true") // Başarısız giriş sonrası yönlendirilecek URL
+                .loginPage("/login")
+                .permitAll()
+                .defaultSuccessUrl("/home", true)
+                .failureUrl("/login?error=true")
             )
             .logout(logout -> logout
-                .logoutUrl("/logout") // Logout işlemini tetikleyecek URL
-                .logoutSuccessUrl("/login?logout") // Başarılı logout sonrası yönlendirilecek URL
-                .invalidateHttpSession(true) // HTTP session'ı geçersiz kıl
-                .deleteCookies("JSESSIONID") // Çerezleri sil (opsiyonel)
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/login?logout")
+                .invalidateHttpSession(true)
+                .deleteCookies("JSESSIONID")
                 .permitAll()
+            )
+            .exceptionHandling(exceptions -> exceptions
+                 .accessDeniedPage("/access-denied") // Yetkisiz erişim için özel sayfa
             );
-            // .exceptionHandling(exceptions -> exceptions
-            //     .accessDeniedPage("/access-denied") // Yetkisiz erişim durumunda yönlendirilecek sayfa (ileride oluşturulabilir)
-            // );
 
         return http.build();
     }
