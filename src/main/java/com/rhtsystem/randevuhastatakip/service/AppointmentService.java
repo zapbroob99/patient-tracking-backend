@@ -12,9 +12,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // ÖNEMLİ
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AppointmentService {
@@ -209,6 +214,47 @@ public class AppointmentService {
     @Transactional(readOnly = true) // Okuma işlemi (genellikle LOB içermez ama alışkanlık)
     public List<Doctor> getAllDoctors() {
         return doctorRepository.findAll();
+    }
+
+    // AppointmentService.java içine
+
+    @Transactional(readOnly = true)
+    public List<LocalTime> getAvailableTimeSlots(Long doctorId, LocalDate date) {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new IllegalArgumentException("Doctor not found with ID: " + doctorId));
+
+        // Doktorun o günkü mevcut randevularını al
+        LocalDateTime startOfDay = date.atStartOfDay(); // Günün başlangıcı (00:00)
+        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);   // Günün sonu (23:59:59.999...)
+
+        List<Appointment> existingAppointments = appointmentRepository
+                .findByDoctorAndAppointmentDateTimeBetweenOrderByAppointmentDateTimeAsc(doctor, startOfDay, endOfDay);
+
+        Set<LocalTime> bookedTimes = existingAppointments.stream()
+                .filter(app -> app.getStatus() == AppointmentStatus.PENDING || app.getStatus() == AppointmentStatus.CONFIRMED)
+                .map(app -> app.getAppointmentDateTime().toLocalTime())
+                .collect(Collectors.toSet());
+
+        List<LocalTime> availableSlots = new ArrayList<>();
+        // Varsayılan çalışma saatleri (örneğin 09:00 - 17:00)
+        // Bu saatler ileride doktor bazlı veya genel ayar olarak da tanımlanabilir.
+        LocalTime startTime = LocalTime.of(9, 0);
+        LocalTime endTime = LocalTime.of(17, 0); // Son randevu 16:30'da başlar, 17:00'de biter.
+        LocalTime slot = startTime;
+
+        while (slot.isBefore(endTime)) {
+            // Eğer slot bugünün tarihine aitse ve geçmiş bir saatse, ekleme
+            if (date.isEqual(LocalDate.now()) && slot.isBefore(LocalTime.now())) {
+                slot = slot.plusMinutes(30);
+                continue;
+            }
+
+            if (!bookedTimes.contains(slot)) {
+                availableSlots.add(slot);
+            }
+            slot = slot.plusMinutes(30);
+        }
+        return availableSlots;
     }
 
     @Transactional(readOnly = true) // Okuma işlemi

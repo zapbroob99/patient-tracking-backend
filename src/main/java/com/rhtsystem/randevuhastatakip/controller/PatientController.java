@@ -4,11 +4,11 @@ import com.rhtsystem.randevuhastatakip.dto.AppointmentRequestDto;
 import com.rhtsystem.randevuhastatakip.dto.DoctorDto;
 import com.rhtsystem.randevuhastatakip.model.Appointment;
 import com.rhtsystem.randevuhastatakip.model.Doctor;
-import com.rhtsystem.randevuhastatakip.model.Patient;
 import com.rhtsystem.randevuhastatakip.service.AppointmentService;
-import com.rhtsystem.randevuhastatakip.service.UserService; // Rol sabitleri için
+import com.rhtsystem.randevuhastatakip.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize; // Metod seviyesinde yetkilendirme
+import org.springframework.format.annotation.DateTimeFormat; // Tarih formatı için
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,15 +16,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 // import jakarta.validation.Valid;
 
 
 @Controller
-@RequestMapping("/patient") // Bu controller'daki tüm mapping'ler /patient ile başlayacak
-@PreAuthorize("hasRole('" + UserService.ROLE_HASTA + "')") // Bu controller'a sadece ROLE_HASTA erişebilir
+@RequestMapping("/patient")
+@PreAuthorize("hasRole('" + UserService.ROLE_HASTA + "')")
 public class PatientController {
 
     private final AppointmentService appointmentService;
@@ -34,106 +36,115 @@ public class PatientController {
         this.appointmentService = appointmentService;
     }
 
+    // ... (dashboard metodu aynı) ...
     @GetMapping("/dashboard")
     public String patientDashboard(Model model) {
-        // Yaklaşan randevuları listele
         List<Appointment> upcomingAppointments = appointmentService.getMyUpcomingAppointmentsAsPatient();
         model.addAttribute("upcomingAppointments", upcomingAppointments);
-        // İleride başka bilgiler de eklenebilir
-        return "patient/dashboard"; // patient/dashboard.html
+        return "patient/dashboard";
     }
 
-    @GetMapping("/appointments/new")
-    public String showCreateAppointmentForm(Model model, @RequestParam(required = false) String specialization) {
-        List<Doctor> doctors;
-        if (specialization != null && !specialization.trim().isEmpty()) {
-            doctors = appointmentService.findDoctorsBySpecialization(specialization);
-        } else {
-            doctors = appointmentService.getAllDoctors();
-        }
 
+    @GetMapping("/appointments/new")
+    public String showCreateAppointmentForm(Model model,
+                                            @RequestParam(name = "doctorId", required = false) Long selectedDoctorId,
+                                            @RequestParam(name = "appointmentDate", required = false)
+                                            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate) {
+
+        List<Doctor> doctors = appointmentService.getAllDoctors();
         List<DoctorDto> doctorDtos = doctors.stream()
-                .map(doc -> new DoctorDto(doc.getUser().getId(), doc.getUser().getFirstName(), doc.getUser().getLastName(), doc.getSpecialization()))
+                .map(doc -> new DoctorDto(doc.getId(), doc.getUser().getFirstName(), doc.getUser().getLastName(), doc.getSpecialization()))
                 .collect(Collectors.toList());
 
-        // Doktorların uzmanlık alanlarını (tekrarsız) alalım
-        List<String> specializations = appointmentService.getAllDoctors().stream()
-                                           .map(Doctor::getSpecialization)
-                                           .distinct()
-                                           .sorted()
-                                           .collect(Collectors.toList());
-
-        model.addAttribute("appointmentRequest", new AppointmentRequestDto());
         model.addAttribute("doctors", doctorDtos);
-        model.addAttribute("specializations", specializations); // Filtreleme için
-        model.addAttribute("selectedSpecialization", specialization);
+        model.addAttribute("appointmentRequest", new AppointmentRequestDto()); // Form için boş DTO
+        model.addAttribute("minDate", LocalDate.now().toString()); // Tarih seçimi için minimum gün
 
-        // Minumum tarih olarak bugünü set edelim (datetime-local için)
-        model.addAttribute("minDateTime", LocalDate.now().toString() + "T00:00");
+        List<LocalTime> availableSlots = Collections.emptyList();
+        if (selectedDoctorId != null && appointmentDate != null) {
+            try {
+                availableSlots = appointmentService.getAvailableTimeSlots(selectedDoctorId, appointmentDate);
+                model.addAttribute("selectedDoctorId", selectedDoctorId);
+                model.addAttribute("selectedDate", appointmentDate.toString());
+            } catch (IllegalArgumentException e) {
+                model.addAttribute("slotError", e.getMessage());
+            }
+        }
+        model.addAttribute("availableTimeSlots", availableSlots);
 
-
-        return "patient/create-appointment"; // patient/create-appointment.html
+        return "patient/create-appointment-slots"; // Yeni HTML dosyası
     }
 
     @PostMapping("/appointments/create")
     public String createAppointment(
-            // @Valid
+            // @Valid // DTO'da validasyonlar varsa
             @ModelAttribute("appointmentRequest") AppointmentRequestDto appointmentRequest,
-            BindingResult result,
-            Model model,
+            // BindingResult result, // Validasyon için
+            @RequestParam("selectedTimeSlot") @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime selectedTimeSlot,
+            @RequestParam("appointmentDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate,
+            Model model, // Hata durumunda modeli tekrar doldurmak için
             RedirectAttributes redirectAttributes) {
 
         // if (result.hasErrors()) {
-        //     // Hata varsa formu tekrar yükle, doktor listesini ve uzmanlıkları tekrar gönder
-        //     List<Doctor> doctors = appointmentService.getAllDoctors();
-        //     List<DoctorDto> doctorDtos = doctors.stream()
-        //             .map(doc -> new DoctorDto(doc.getUser().getId(), doc.getUser().getFirstName(), doc.getUser().getLastName(), doc.getSpecialization()))
-        //             .collect(Collectors.toList());
-        //     List<String> specializations = doctors.stream().map(Doctor::getSpecialization).distinct().sorted().collect(Collectors.toList());
-        //
-        //     model.addAttribute("doctors", doctorDtos);
-        //     model.addAttribute("specializations", specializations);
-        //     model.addAttribute("minDateTime", LocalDate.now().toString() + "T00:00");
-        //     return "patient/create-appointment";
+        //     // Hata durumunda formu tekrar yükle (doktorları, tarihi, saatleri tekrar doldurarak)
+        //     // Bu kısım daha detaylı doldurulabilir.
+        //     return reloadFormWithError(model, appointmentRequest.getDoctorId(), appointmentDate, "Formda hatalar var.");
         // }
 
-        try {
-            appointmentService.createAppointment(appointmentRequest.getDoctorId(), appointmentRequest.getAppointmentDateTime());
-            redirectAttributes.addFlashAttribute("successMessage", "Randevunuz başarıyla oluşturuldu.");
-            return "redirect:/patient/appointments/my"; // Başarılı randevu sonrası randevularım sayfasına
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Randevu oluşturulamadı: " + e.getMessage());
-            // Hata durumunda formu ve doktor listesini tekrar yüklemek için:
-            // Bu kısmı yukarıdaki if bloğuna benzer şekilde doldurabiliriz veya direkt anasayfaya yönlendirebiliriz.
-            // Şimdilik basitçe create formuna geri yönlendirelim, ama doktor listesi vb. eksik kalacak.
-            // Daha iyi bir UX için, hata mesajıyla birlikte formu tekrar doğru şekilde göstermek gerekir.
-            // return "redirect:/patient/appointments/new?error=" + e.getMessage(); // Bu şekilde de hata mesajı taşınabilir
-             List<Doctor> doctors = appointmentService.getAllDoctors();
-             List<DoctorDto> doctorDtos = doctors.stream()
-                     .map(doc -> new DoctorDto(doc.getUser().getId(), doc.getUser().getFirstName(), doc.getUser().getLastName(), doc.getSpecialization()))
-                     .collect(Collectors.toList());
-             List<String> specializations = doctors.stream().map(Doctor::getSpecialization).distinct().sorted().collect(Collectors.toList());
+        if (appointmentRequest.getDoctorId() == null || selectedTimeSlot == null || appointmentDate == null) {
+            return reloadFormWithError(model, appointmentRequest.getDoctorId(), appointmentDate, "Doktor, tarih ve saat seçimi zorunludur.");
+        }
 
-             model.addAttribute("appointmentRequest", appointmentRequest); // Kullanıcının girdiği verileri koru
-             model.addAttribute("doctors", doctorDtos);
-             model.addAttribute("specializations", specializations);
-             model.addAttribute("minDateTime", LocalDate.now().toString() + "T00:00");
-             model.addAttribute("errorMessage", "Randevu oluşturulamadı: " + e.getMessage()); // Hata mesajını model'e ekle
-             return "patient/create-appointment"; // Hata ile formu tekrar göster
+        LocalDateTime fullAppointmentDateTime = LocalDateTime.of(appointmentDate, selectedTimeSlot);
+
+        try {
+            appointmentService.createAppointment(appointmentRequest.getDoctorId(), fullAppointmentDateTime);
+            redirectAttributes.addFlashAttribute("successMessage", "Randevunuz başarıyla oluşturuldu: " +
+                    appointmentDate.toString() + " " + selectedTimeSlot.toString());
+            return "redirect:/patient/appointments/my";
+        } catch (Exception e) {
+            // Hata durumunda formu ve seçili değerleri koruyarak tekrar göster
+            return reloadFormWithError(model, appointmentRequest.getDoctorId(), appointmentDate, "Randevu oluşturulamadı: " + e.getMessage());
         }
     }
+    
+    // Hata durumunda formu yeniden yüklemek için yardımcı metod
+    private String reloadFormWithError(Model model, Long doctorId, LocalDate appointmentDate, String errorMessage) {
+        List<Doctor> doctors = appointmentService.getAllDoctors();
+        List<DoctorDto> doctorDtos = doctors.stream()
+                .map(doc -> new DoctorDto(doc.getId(), doc.getUser().getFirstName(), doc.getUser().getLastName(), doc.getSpecialization()))
+                .collect(Collectors.toList());
+        model.addAttribute("doctors", doctorDtos);
+        model.addAttribute("appointmentRequest", new AppointmentRequestDto()); // Yeni boş DTO veya mevcut DTO
+        model.addAttribute("minDate", LocalDate.now().toString());
 
-    @GetMapping("/appointments/my")
+        List<LocalTime> availableSlots = Collections.emptyList();
+        if (doctorId != null && appointmentDate != null) {
+            try {
+                availableSlots = appointmentService.getAvailableTimeSlots(doctorId, appointmentDate);
+                model.addAttribute("selectedDoctorId", doctorId);
+                model.addAttribute("selectedDate", appointmentDate.toString());
+            } catch (IllegalArgumentException e) {
+                // Slot hatası olabilir, ama ana hata mesajını kullan
+            }
+        }
+        model.addAttribute("availableTimeSlots", availableSlots);
+        model.addAttribute("errorMessage", errorMessage); // Ana hata mesajı
+        return "patient/create-appointment-slots";
+    }
+
+
+    // ... (listMyAppointments ve cancelAppointment metodları aynı) ...
+     @GetMapping("/appointments/my")
     public String listMyAppointments(Model model) {
         List<Appointment> upcomingAppointments = appointmentService.getMyUpcomingAppointmentsAsPatient();
         List<Appointment> pastAppointments = appointmentService.getMyPastAppointmentsAsPatient();
 
         model.addAttribute("upcomingAppointments", upcomingAppointments);
         model.addAttribute("pastAppointments", pastAppointments);
-        return "patient/my-appointments"; // patient/my-appointments.html
+        return "patient/my-appointments";
     }
 
-    // Randevu iptali için POST mapping
     @PostMapping("/appointments/cancel/{appointmentId}")
     public String cancelAppointment(@PathVariable Long appointmentId, RedirectAttributes redirectAttributes) {
         try {
@@ -144,5 +155,4 @@ public class PatientController {
         }
         return "redirect:/patient/appointments/my";
     }
-
 }
