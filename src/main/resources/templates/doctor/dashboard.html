@@ -9,13 +9,12 @@
 <body>
 <div layout:fragment="content" class="container mt-4">
     <h2>Doktor Paneli</h2>
-    <p>Hoş geldiniz, Dr. <strong sec:authentication="principal.username">Kullanıcı</strong>!</p> <!-- principal.username yerine daha iyi bir isim olabilir -->
+    <p>Hoş geldiniz, Dr. <strong sec:authentication="principal.fullName">Ad Soyad</strong>!</p> <!-- DEĞİŞTİ -->
 
     <div class="list-group mt-4">
         <a th:href="@{/doctor/appointments}" class="list-group-item list-group-item-action">
             <i class="fas fa-calendar-alt"></i> Tüm Randevuları Görüntüle
         </a>
-        <!-- Diğer doktor işlemleri buraya eklenebilir -->
     </div>
 
     <h3 class="mt-5">Bekleyen Randevularınız</h3>

@@ -9,7 +9,7 @@
 <body>
 <div layout:fragment="content" class="container mt-4">
     <h2>Hasta Paneli</h2>
-    <p>Hoş geldiniz, <strong sec:authentication="principal.username">Kullanıcı</strong>!</p>
+    <p>Hoş geldiniz, <strong sec:authentication="principal.fullName">Ad Soyad</strong>!</p> <!-- DEĞİŞTİ -->
 
     <div class="list-group mt-4">
         <a th:href="@{/patient/appointments/new}" class="list-group-item list-group-item-action">
@@ -18,8 +18,6 @@
         <a th:href="@{/patient/appointments/my}" class="list-group-item list-group-item-action">
             <i class="fas fa-calendar-check"></i> Randevularımı Görüntüle
         </a>
-        <!-- Diğer hasta işlemleri buraya eklenebilir -->
-        <!-- Örneğin: Profilimi Düzenle, Geçmiş Test Sonuçlarım vb. -->
     </div>
 
     <h3 class="mt-5">Yaklaşan Randevularınız</h3>

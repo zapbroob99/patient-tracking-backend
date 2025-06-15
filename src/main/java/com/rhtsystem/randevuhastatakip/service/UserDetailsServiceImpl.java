@@ -1,7 +1,8 @@
 package com.rhtsystem.randevuhastatakip.service;
 
+import com.rhtsystem.randevuhastatakip.model.CustomUserDetails; // YENİ IMPORT
 import com.rhtsystem.randevuhastatakip.model.Role;
-import com.rhtsystem.randevuhastatakip.model.User;
+import com.rhtsystem.randevuhastatakip.model.User; // Kendi User entity'miz
 import com.rhtsystem.randevuhastatakip.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
@@ -27,18 +28,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    @Transactional(readOnly = true) // Sadece okuma işlemi olduğu için
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                user.isEnabled(),
-                true, // accountNonExpired
-                true, // credentialsNonExpired
-                true, // accountNonLocked
+        // CustomUserDetails nesnesi döndürüyoruz
+        return new CustomUserDetails(
+                user, // Kendi User entity'mizi constructor'a veriyoruz
                 mapRolesToAuthorities(user.getRoles())
         );
     }
