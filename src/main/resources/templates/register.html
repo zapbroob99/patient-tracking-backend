@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Kullanıcı Kayıt</title>
+    <!-- Basit bir stil ekleyelim -->
+    <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}" />
+    <style>
+        .error-message { color: red; font-size: 0.9em; }
+        .success-message { color: green; font-size: 0.9em; }
+        #specializationGroup { display: none; } /* Başlangıçta gizli */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Kullanıcı Kayıt Formu</h2>
+
+        <!-- Hata Mesajları -->
+        <div th:if="${registrationError}" class="error-message" th:text="${registrationError}"></div>
+        <div th:if="${passwordError}" class="error-message" th:text="${passwordError}"></div>
+        <div th:if="${specializationError}" class="error-message" th:text="${specializationError}"></div>
+
+        <!-- Başarı Mesajı (Redirect sonrası) -->
+        <div th:if="${param.successMessage}" class="success-message" th:text="${param.successMessage}"></div>
+
+        <form th:action="@{/register}" th:object="${userDto}" method="post">
+            <div>
+                <label for="username">Kullanıcı Adı (TC Kimlik No veya E-posta):</label>
+                <input type="text" id="username" th:field="*{username}" required />
+            </div>
+            <div>
+                <label for="password">Şifre:</label>
+                <input type="password" id="password" th:field="*{password}" required />
+            </div>
+            <div>
+                <label for="confirmPassword">Şifre Tekrar:</label>
+                <input type="password" id="confirmPassword" th:field="*{confirmPassword}" required />
+            </div>
+            <div>
+                <label for="firstName">Ad:</label>
+                <input type="text" id="firstName" th:field="*{firstName}" required />
+            </div>
+            <div>
+                <label for="lastName">Soyad:</label>
+                <input type="text" id="lastName" th:field="*{lastName}" required />
+            </div>
+            <div>
+                <label for="role">Rol:</label>
+                <select id="role" th:field="*{role}" required onchange="toggleSpecialization()">
+                    <option value="">Rol Seçiniz...</option>
+                    <option value="HASTA">Hasta</option>
+                    <option value="DOKTOR">Doktor</option>
+                </select>
+            </div>
+            <div id="specializationGroup"> <!-- Doktor seçilince görünecek -->
+                <label for="specialization">Uzmanlık Alanı:</label>
+                <input type="text" id="specialization" th:field="*{specialization}" />
+            </div>
+            <div>
+                <button type="submit">Kayıt Ol</button>
+            </div>
+        </form>
+        <p>Zaten bir hesabınız var mı? <a th:href="@{/login}">Giriş Yap</a></p>
+    </div>
+
+    <script type="text/javascript">
+        function toggleSpecialization() {
+            var roleSelect = document.getElementById('role');
+            var specializationGroup = document.getElementById('specializationGroup');
+            if (roleSelect.value === 'DOKTOR') {
+                specializationGroup.style.display = 'block';
+                document.getElementById('specialization').required = true; // Doktor için zorunlu yap
+            } else {
+                specializationGroup.style.display = 'none';
+                document.getElementById('specialization').required = false;
+                 document.getElementById('specialization').value = ''; // Alanı temizle
+            }
+        }
+        // Sayfa yüklendiğinde de kontrol et (eğer form hatalı veriyle geri dönerse)
+        window.onload = toggleSpecialization;
+    </script>
+</body>
+</html>
