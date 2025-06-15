@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Yeni Randevu Al</title>
+    <style>
+        .step-section { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 5px; background-color: #f9f9f9;}
+        .step-section h4 { margin-top: 0; color: #007bff; }
+        .step-disabled { opacity: 0.5; pointer-events: none; }
+        .current-step { border-left: 5px solid #007bff; }
+    </style>
+</head>
+<body>
+    <div layout:fragment="content" class="container mt-4">
+        <h2>Yeni Randevu Al - Adım Adım</h2>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+        <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+        <div th:if="${slotError}" class="alert alert-warning" role="alert" th:text="${slotError}"></div>
+
+        <!-- Adım 1: Uzmanlık Seçimi -->
+        <div class="step-section" th:classappend="${currentStep == 1 ? 'current-step' : ''}">
+            <h4>Adım 1: Poliklinik (Uzmanlık Alanı) Seçiniz</h4>
+            <form th:action="@{/patient/appointments/new}" method="get">
+                <input type="hidden" name="step" value="2" /> <!-- Sonraki adıma geç -->
+                <div class="mb-3">
+                    <label for="specialization" class="form-label">Uzmanlık Alanı:</label>
+                    <select id="specialization" name="specialization" class="form-select" required onchange="this.form.submit()">
+                        <option value="">Uzmanlık Seçiniz...</option>
+                        <option th:each="spec : ${allSpecializations}"
+                                th:value="${spec}"
+                                th:text="${spec}"
+                                th:selected="${spec == selectedSpecialization}">
+                        </option>
+                    </select>
+                </div>
+                <!-- <button type="submit" class="btn btn-primary">Doktorları Listele</button> -->
+            </form>
+        </div>
+
+        <!-- Adım 2: Doktor Seçimi -->
+        <div class="step-section"
+             th:classappend="${currentStep == 2 ? 'current-step' : (selectedSpecialization == null ? 'step-disabled' : '')}">
+            <h4>Adım 2: Doktor Seçiniz</h4>
+            <div th:if="${selectedSpecialization == null}" class="text-muted">
+                Lütfen önce bir uzmanlık alanı seçiniz.
+            </div>
+            <form th:if="${selectedSpecialization != null}" th:action="@{/patient/appointments/new}" method="get">
+                <input type="hidden" name="step" value="3" />
+                <input type="hidden" name="specialization" th:value="${selectedSpecialization}" />
+                <div class="mb-3">
+                    <label for="doctorId" class="form-label">Doktor (<span th:text="${selectedSpecialization}"></span>):</label>
+                    <select id="doctorId" name="doctorId" class="form-select" required onchange="this.form.submit()">
+                        <option value="">Doktor Seçiniz...</option>
+                        <option th:each="doc : ${doctorsInSpecialization}"
+                                th:value="${doc.id}"
+                                th:text="${doc.fullName}"
+                                th:selected="${doc.id == selectedDoctorId}">
+                        </option>
+                    </select>
+                </div>
+                 <!-- <button type="submit" class="btn btn-primary">Tarih Seç</button> -->
+            </form>
+        </div>
+
+        <!-- Adım 3: Tarih Seçimi -->
+        <div class="step-section"
+             th:classappend="${currentStep == 3 ? 'current-step' : (selectedDoctorId == null ? 'step-disabled' : '')}">
+            <h4>Adım 3: Randevu Tarihi Seçiniz</h4>
+            <div th:if="${selectedDoctorId == null}" class="text-muted">
+                Lütfen önce bir doktor seçiniz.
+            </div>
+            <form th:if="${selectedDoctorId != null}" th:action="@{/patient/appointments/new}" method="get">
+                <input type="hidden" name="step" value="4" />
+                <input type="hidden" name="specialization" th:value="${selectedSpecialization}" />
+                <input type="hidden" name="doctorId" th:value="${selectedDoctorId}" />
+                <p><strong>Seçili Doktor:</strong> <span th:text="${selectedDoctorName}"></span></p>
+                <div class="mb-3">
+                    <label for="appointmentDate" class="form-label">Tarih:</label>
+                    <input type="date" id="appointmentDate" name="appointmentDate"
+                           class="form-control" th:min="${minDate}" th:value="${selectedDate}" required />
+                </div>
+                <button type="submit" class="btn btn-info">
+                    <i class="fas fa-search"></i> Uygun Saatleri Göster
+                </button>
+            </form>
+        </div>
+
+        <!-- Adım 4: Saat Slotu Seçimi ve Randevu Oluşturma -->
+        <div class="step-section"
+             th:classappend="${currentStep == 4 ? 'current-step' : (selectedDate == null or selectedDoctorId == null ? 'step-disabled' : '')}">
+            <h4>Adım 4: Uygun Saat Seçiniz (<span th:text="${selectedDate}"></span> için)</h4>
+            <div th:if="${selectedDate == null or selectedDoctorId == null}" class="text-muted">
+                 Lütfen önce doktor ve tarih seçiniz.
+            </div>
+            <div th:if="${selectedDate != null and selectedDoctorId != null}">
+                <div th:if="${not #lists.isEmpty(availableTimeSlots)}" class="time-slot-group">
+                     <form th:action="@{/patient/appointments/create}" method="post" class="mt-3">
+                        <input type="hidden" name="doctorId" th:value="${selectedDoctorId}" />
+                        <input type="hidden" name="appointmentDate" th:value="${selectedDate}" />
+                        <label class="form-label time-slot-label">Saat:</label>
+                        <div class="mb-3 time-slot-buttons">
+                            <th:block th:each="slot : ${availableTimeSlots}">
+                                <button type="submit" name="selectedTimeSlot" th:value="${slot}"
+                                        class="btn btn-outline-primary m-1">
+                                    <i class="far fa-clock"></i> <span th:text="${#temporals.format(slot, 'HH:mm')}"></span>
+                                </button>
+                            </th:block>
+                        </div>
+                    </form>
+                </div>
+                <div th:if="${#lists.isEmpty(availableTimeSlots) and slotError == null}" class="alert alert-warning mt-3">
+                    Seçili tarih için <strong th:text="${selectedDoctorName}"></strong> adlı doktordan uygun randevu saati bulunmamaktadır.
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a th:href="@{/patient/dashboard}" class="btn btn-secondary">
+                 <i class="fas fa-arrow-left"></i> Panele Dön
+            </a>
+        </div>
+    </div>
+</body>
+</html>
