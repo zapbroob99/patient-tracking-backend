@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Kullanıcı Yönetimi</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Kullanıcı Yönetimi</h2>
+
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+    <a th:href="@{/admin/doctors/register}" class="btn btn-primary mb-3">
+        <i class="fas fa-user-md"></i> Yeni Doktor Ekle
+    </a>
+    <!-- Yeni Hasta Ekle butonu da eklenebilir (eğer gerekirse) -->
+
+    <table class="table table-striped table-hover mt-3">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Kullanıcı Adı</th>
+                <th>Ad Soyad</th>
+                <th>Roller</th>
+                <th>Tip</th>
+                <th>Uzmanlık</th>
+                <th>Durum</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="user : ${users}" th:classappend="${!user.enabled ? 'table-danger' : ''}">
+                <td th:text="${user.id}"></td>
+                <td th:text="${user.username}"></td>
+                <td th:text="${user.firstName + ' ' + user.lastName}"></td>
+                <td>
+                    <span th:each="role : ${user.roles}" th:text="${role}" class="badge bg-info me-1"></span>
+                </td>
+                <td th:text="${user.userType}"></td>
+                <td th:text="${user.specialization != null ? user.specialization : '-'}"></td>
+                <td th:text="${user.enabled ? 'Aktif' : 'Pasif'}"></td>
+                <td>
+                    <!-- Kullanıcıyı düzenleme butonu eklenebilir -->
+                    <!-- <a th:href="@{/admin/users/edit/{id}(id=${user.id})}" class="btn btn-warning btn-sm me-1">
+                        <i class="fas fa-edit"></i> Düzenle
+                    </a> -->
+                    <form th:action="@{/admin/users/delete/{id}(id=${user.id})}" method="post" style="display: inline;"
+                          onsubmit="return confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve kullanıcının randevuları iptal edilebilir.');">
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                th:disabled="${#authentication.principal.username == user.username}"> <!-- Kendini silmeyi engelle -->
+                            <i class="fas fa-trash-alt"></i> Sil
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+     <div class="mt-4">
+        <a th:href="@{/admin/dashboard}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Panele Dön
+        </a>
+    </div>
+</div>
+</body>
+</html>

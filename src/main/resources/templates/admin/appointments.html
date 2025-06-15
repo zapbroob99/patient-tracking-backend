@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Tüm Randevular</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Tüm Randevular</h2>
+
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+    <table class="table table-striped table-hover mt-3">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Hasta</th>
+                <th>Doktor</th>
+                <th>Uzmanlık</th>
+                <th>Tarih ve Saat</th>
+                <th>Durum</th>
+                <th>Notlar</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="app : ${appointments}">
+                <td th:text="${app.id}"></td>
+                <td th:text="${app.patientFirstName + ' ' + app.patientLastName + ' (' + app.patientUsername + ')'}"></td>
+                <td th:text="${app.doctorFirstName + ' ' + app.doctorLastName}"></td>
+                <td th:text="${app.doctorSpecialization}"></td>
+                <td th:text="${#temporals.format(app.appointmentDateTime, 'dd.MM.yyyy HH:mm')}"></td>
+                <td>
+                     <span th:switch="${app.status.name()}" class="badge"
+                          th:classappend="${app.status.name() == 'PENDING' ? 'bg-warning text-dark' : (app.status.name() == 'CONFIRMED' ? 'bg-success' : (app.status.name() == 'CANCELLED' or app.status.name() == 'REJECTED' ? 'bg-danger' : 'bg-secondary'))}">
+                        <th:block th:switch="${app.status.name()}">
+                            <span th:case="'PENDING'">Beklemede</span>
+                            <span th:case="'CONFIRMED'">Onaylandı</span>
+                            <span th:case="'CANCELLED'">İptal Edildi</span>
+                            <span th:case="'REJECTED'">Reddedildi</span>
+                            <span th:case="*">Bilinmiyor</span>
+                        </th:block>
+                    </span>
+                </td>
+                <td th:text="${app.doctorNotes != null ? #strings.abbreviate(app.doctorNotes, 50) : '-'}"></td>
+                <td>
+                    <!-- Randevu detay görüntüleme linki eklenebilir -->
+                    <form th:action="@{/admin/appointments/delete/{id}(id=${app.id})}" method="post" style="display: inline;"
+                          onsubmit="return confirm('Bu randevuyu kalıcı olarak silmek istediğinizden emin misiniz?');">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash-alt"></i> Sil
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="mt-4">
+        <a th:href="@{/admin/dashboard}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Panele Dön
+        </a>
+    </div>
+</div>
+</body>
+</html>

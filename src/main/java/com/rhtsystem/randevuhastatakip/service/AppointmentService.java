@@ -257,6 +257,21 @@ public class AppointmentService {
         return availableSlots;
     }
 
+    // AppointmentService.java içine
+
+    // Admin için tüm randevuları listeleme
+    @Transactional(readOnly = true)
+    public List<Appointment> getAllAppointments() {
+        return appointmentRepository.findAll(); // Veya sıralı: findAll(Sort.by(Sort.Direction.DESC, "appointmentDateTime"))
+    }
+
+    @Transactional
+    public void deleteAppointmentById(Long appointmentId) throws Exception {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new Exception("Randevu bulunamadı ID: " + appointmentId));
+        appointmentRepository.delete(appointment);
+    }
+
     @Transactional(readOnly = true) // Okuma işlemi
     public List<Doctor> findDoctorsBySpecialization(String specialization) {
         return doctorRepository.findBySpecialization(specialization);

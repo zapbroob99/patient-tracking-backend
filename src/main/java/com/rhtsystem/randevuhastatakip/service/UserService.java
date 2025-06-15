@@ -1,20 +1,14 @@
 package com.rhtsystem.randevuhastatakip.service;
 
-import com.rhtsystem.randevuhastatakip.model.Patient;
-import com.rhtsystem.randevuhastatakip.model.Role;
-import com.rhtsystem.randevuhastatakip.model.User;
-import com.rhtsystem.randevuhastatakip.model.Doctor;
-import com.rhtsystem.randevuhastatakip.repository.DoctorRepository;
-import com.rhtsystem.randevuhastatakip.repository.PatientRepository;
-import com.rhtsystem.randevuhastatakip.repository.RoleRepository;
-import com.rhtsystem.randevuhastatakip.repository.UserRepository;
+import com.rhtsystem.randevuhastatakip.model.*; // Appointment'ı da import edelim
+import com.rhtsystem.randevuhastatakip.repository.*; // AppointmentRepository'yi de import edelim
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
-import java.util.List;
+import java.util.List; // EKLENDİ
 import java.util.Optional;
 import java.util.Set;
 
@@ -26,8 +20,9 @@ public class UserService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AppointmentRepository appointmentRepository; // EKLENDİ
 
-    // Rol sabitleri (Prefix'li olanlar DB ve GrantedAuthority için, prefix'siz olanlar hasRole() için)
+    // Rol sabitleri
     public static final String ROLE_HASTA_PREFIXED = "ROLE_HASTA";
     public static final String ROLE_DOKTOR_PREFIXED = "ROLE_DOKTOR";
     public static final String ROLE_ADMIN_PREFIXED = "ROLE_ADMIN";
@@ -41,12 +36,14 @@ public class UserService {
                        RoleRepository roleRepository,
                        PatientRepository patientRepository,
                        DoctorRepository doctorRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       AppointmentRepository appointmentRepository) { // EKLENDİ
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.patientRepository = patientRepository;
         this.doctorRepository = doctorRepository;
         this.passwordEncoder = passwordEncoder;
+        this.appointmentRepository = appointmentRepository; // EKLENDİ
     }
 
     @Transactional
@@ -58,7 +55,6 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         Set<Role> roles = new HashSet<>();
-        // RoleRepository'den prefix'li rol adıyla arama yapıyoruz
         Role userRole = roleRepository.findByName(roleNamePrefixed)
                 .orElseThrow(() -> new RuntimeException("Hata: Rol bulunamadı. (" + roleNamePrefixed + ")"));
         roles.add(userRole);
@@ -67,7 +63,6 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Rolüne göre Patient veya Doctor oluştur (Admin hariç)
         if (ROLE_HASTA_PREFIXED.equals(roleNamePrefixed)) {
             Patient patient = new Patient();
             patient.setUser(savedUser);
@@ -80,8 +75,6 @@ public class UserService {
             doctor.setSpecialization(specialization);
             doctorRepository.save(doctor);
         }
-        // Admin rolü için ek bir Patient/Doctor kaydı oluşturmuyoruz.
-
         return savedUser;
     }
 
@@ -89,8 +82,55 @@ public class UserService {
         return userRepository.findByUsername(username);
     }
 
-    // İleride kullanıcı listeleme, silme vb. metodlar eklenebilir.
-    public List<User> findAllUsers() {
+    public List<User> findAllUsers() { // Adminin tüm kullanıcıları listelemesi için
         return userRepository.findAll();
+    }
+
+    public Optional<User> findUserById(Long id) { // Adminin kullanıcı silmesi için
+        return userRepository.findById(id);
+    }
+
+
+    @Transactional
+    public void deleteUserById(Long userId) throws Exception {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new Exception("Kullanıcı bulunamadı ID: " + userId));
+
+        // 1. Kullanıcıya ait Patient veya Doctor profilini sil
+        Optional<Patient> patientOpt = patientRepository.findByUserId(userId);
+        if (patientOpt.isPresent()) {
+            // Hastanın randevularını iptal et veya sil (şimdilik iptal edelim)
+            List<Appointment> patientAppointments = appointmentRepository.findByPatientOrderByAppointmentDateTimeDesc(patientOpt.get());
+            for (Appointment app : patientAppointments) {
+                if (app.getStatus() == AppointmentStatus.PENDING || app.getStatus() == AppointmentStatus.CONFIRMED) {
+                    app.setStatus(AppointmentStatus.CANCELLED);
+                    app.setDoctorNotes((app.getDoctorNotes() == null ? "" : app.getDoctorNotes() + "\n") + "Hasta sistemden silindiği için iptal edildi.");
+                    appointmentRepository.save(app);
+                }
+                // Veya direkt appointmentRepository.delete(app); (daha riskli)
+            }
+            patientRepository.delete(patientOpt.get());
+        }
+
+        Optional<Doctor> doctorOpt = doctorRepository.findByUserId(userId);
+        if (doctorOpt.isPresent()) {
+            // Doktorun randevularını iptal et veya sil (şimdilik iptal edelim)
+            List<Appointment> doctorAppointments = appointmentRepository.findByDoctorOrderByAppointmentDateTimeAsc(doctorOpt.get());
+            for (Appointment app : doctorAppointments) {
+                 if (app.getStatus() == AppointmentStatus.PENDING || app.getStatus() == AppointmentStatus.CONFIRMED) {
+                    app.setStatus(AppointmentStatus.CANCELLED);
+                    app.setDoctorNotes((app.getDoctorNotes() == null ? "" : app.getDoctorNotes() + "\n") + "Doktor sistemden silindiği için iptal edildi.");
+                    appointmentRepository.save(app);
+                }
+            }
+            doctorRepository.delete(doctorOpt.get());
+        }
+
+        // 2. user_roles tablosundaki ilişkileri temizle (JPA bunu @ManyToMany ile otomatik yapabilir, ama emin olalım)
+        // Genellikle User silindiğinde @JoinTable ilişkisi de silinir.
+        // Eğer sorun olursa: user.getRoles().clear(); userRepository.save(user); ardından silme.
+
+        // 3. User'ı sil
+        userRepository.delete(user);
     }
 }

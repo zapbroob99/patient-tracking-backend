@@ -15,19 +15,16 @@
     <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
     <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
 
-
     <div class="list-group mt-4">
         <a th:href="@{/admin/doctors/register}" class="list-group-item list-group-item-action">
             <i class="fas fa-user-md"></i> Yeni Doktor Kaydet
         </a>
-        <!-- İleride eklenecekler:
         <a th:href="@{/admin/users}" class="list-group-item list-group-item-action">
             <i class="fas fa-users"></i> Kullanıcıları Yönet
         </a>
         <a th:href="@{/admin/appointments}" class="list-group-item list-group-item-action">
             <i class="fas fa-calendar-alt"></i> Tüm Randevuları Görüntüle
         </a>
-         -->
     </div>
 </div>
 </body>
