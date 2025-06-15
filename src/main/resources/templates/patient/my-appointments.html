@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       layout:decorate="~{layout/main-layout}">
 <head>
     <title>Randevularım</title>
@@ -9,14 +10,22 @@
     <div layout:fragment="content" class="container mt-4">
         <h2>Randevularım</h2>
 
+        <div th:if="${param.errorMessage}" class="alert alert-danger" role="alert" th:text="${param.errorMessage}"></div>
+        <div th:if="${param.successMessage}" class="alert alert-success" role="alert" th:text="${param.successMessage}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
         <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
 
-        <a th:href="@{/patient/appointments/new}" class="btn btn-primary mb-3">Yeni Randevu Al</a>
 
-        <h3>Yaklaşan Randevular</h3>
-        <table class="table table-striped" th:if="${not #lists.isEmpty(upcomingAppointments)}">
-            <thead>
+        <a th:href="@{/patient/appointments/new}" class="btn btn-primary mb-3">
+            <i class="fas fa-calendar-plus"></i> Yeni Randevu Al
+        </a>
+
+        <h3 class="mt-4">Yaklaşan Randevular</h3>
+        <div th:if="${#lists.isEmpty(upcomingAppointments)}" class="alert alert-info mt-3" role="alert">
+            Yaklaşan randevunuz bulunmamaktadır.
+        </div>
+        <table class="table table-hover mt-3" th:if="${not #lists.isEmpty(upcomingAppointments)}">
+            <thead class="table-light">
                 <tr>
                     <th>Doktor</th>
                     <th>Uzmanlık</th>
@@ -30,26 +39,43 @@
                 <tr th:each="app : ${upcomingAppointments}">
                     <td th:text="${app.doctor.user.firstName + ' ' + app.doctor.user.lastName}"></td>
                     <td th:text="${app.doctor.specialization}"></td>
-                    <td th:text="${#temporals.format(app.appointmentDateTime, 'dd-MM-yyyy HH:mm')}"></td>
-                    <td th:text="${app.status.name()}"></td>
-                    <td th:text="${app.doctorNotes}"></td>
+                    <td th:text="${#temporals.format(app.appointmentDateTime, 'dd MMMM yyyy, HH:mm', new java.util.Locale('tr', 'TR'))}"></td>
+                    <td>
+                         <span th:switch="${app.status.name()}" class="badge"
+                              th:classappend="${app.status.name() == 'PENDING' ? 'bg-warning text-dark' : (app.status.name() == 'CONFIRMED' ? 'bg-success' : (app.status.name() == 'CANCELLED' or app.status.name() == 'REJECTED' ? 'bg-danger' : 'bg-secondary'))}">
+                            <th:block th:switch="${app.status.name()}">
+                                <span th:case="'PENDING'">Beklemede</span>
+                                <span th:case="'CONFIRMED'">Onaylandı</span>
+                                <span th:case="'CANCELLED'">İptal Edildi</span>
+                                <span th:case="'REJECTED'">Reddedildi</span>
+                                <span th:case="*">Bilinmiyor</span>
+                            </th:block>
+                        </span>
+                    </td>
+                    <td th:text="${app.doctorNotes != null ? app.doctorNotes : '-'}"></td>
                     <td>
                         <form th:if="${app.status.name() == 'PENDING' or app.status.name() == 'CONFIRMED'}"
                               th:action="@{/patient/appointments/cancel/{id}(id=${app.id})}" method="post"
-                              onsubmit="return confirm('Bu randevuyu iptal etmek istediğinizden emin misiniz?');">
-                            <button type="submit" class="btn btn-danger btn-sm">İptal Et</button>
+                              onsubmit="return confirm('Bu randevuyu iptal etmek istediğinizden emin misiniz?');"
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-times-circle"></i> İptal Et
+                            </button>
                         </form>
+                        <span th:unless="${app.status.name() == 'PENDING' or app.status.name() == 'CONFIRMED'}">-</span>
                     </td>
                 </tr>
             </tbody>
         </table>
-        <p th:if="${#lists.isEmpty(upcomingAppointments)}">Yaklaşan randevunuz bulunmamaktadır.</p>
 
-        <hr/>
+        <hr class="my-5"/>
 
-        <h3>Geçmiş Randevular</h3>
-        <table class="table table-striped" th:if="${not #lists.isEmpty(pastAppointments)}">
-            <thead>
+        <h3 class="mt-4">Geçmiş Randevular</h3>
+        <div th:if="${#lists.isEmpty(pastAppointments)}" class="alert alert-info mt-3" role="alert">
+            Geçmiş randevunuz bulunmamaktadır.
+        </div>
+        <table class="table table-hover mt-3" th:if="${not #lists.isEmpty(pastAppointments)}">
+            <thead class="table-light">
                 <tr>
                     <th>Doktor</th>
                     <th>Uzmanlık</th>
@@ -62,13 +88,28 @@
                 <tr th:each="app : ${pastAppointments}">
                     <td th:text="${app.doctor.user.firstName + ' ' + app.doctor.user.lastName}"></td>
                     <td th:text="${app.doctor.specialization}"></td>
-                    <td th:text="${#temporals.format(app.appointmentDateTime, 'dd-MM-yyyy HH:mm')}"></td>
-                    <td th:text="${app.status.name()}"></td>
-                    <td th:text="${app.doctorNotes}"></td>
+                    <td th:text="${#temporals.format(app.appointmentDateTime, 'dd MMMM yyyy, HH:mm', new java.util.Locale('tr', 'TR'))}"></td>
+                    <td>
+                        <span th:switch="${app.status.name()}" class="badge"
+                              th:classappend="${app.status.name() == 'PENDING' ? 'bg-warning text-dark' : (app.status.name() == 'CONFIRMED' ? 'bg-success' : (app.status.name() == 'CANCELLED' or app.status.name() == 'REJECTED' ? 'bg-danger' : 'bg-secondary'))}">
+                            <th:block th:switch="${app.status.name()}">
+                                <span th:case="'PENDING'">Beklemede</span>
+                                <span th:case="'CONFIRMED'">Onaylandı</span>
+                                <span th:case="'CANCELLED'">İptal Edildi</span>
+                                <span th:case="'REJECTED'">Reddedildi</span>
+                                <span th:case="*">Bilinmiyor</span>
+                            </th:block>
+                        </span>
+                    </td>
+                    <td th:text="${app.doctorNotes != null ? app.doctorNotes : '-'}"></td>
                 </tr>
             </tbody>
         </table>
-        <p th:if="${#lists.isEmpty(pastAppointments)}">Geçmiş randevunuz bulunmamaktadır.</p>
+        <div class="mt-4">
+            <a th:href="@{/patient/dashboard}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Panele Dön
+            </a>
+        </div>
     </div>
 </body>
 </html>

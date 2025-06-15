@@ -11,33 +11,34 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class HomeController {
 
+    // ROLE_DOKTOR için UserService'deki sabiti kullandığınızdan emin olun
+    // public static final String ROLE_DOKTOR = "ROLE_DOKTOR"; (UserService'de)
+
     @GetMapping("/")
     public String rootRedirect(HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
-             // Eğer kullanıcı giriş yapmışsa rollerine göre yönlendir
-            if (request.isUserInRole(UserService.ROLE_HASTA)) { // ROLE_HASTA direkt kullanılabilir
+            if (request.isUserInRole(UserService.ROLE_HASTA)) {
                 return "redirect:/patient/dashboard";
-            } else if (request.isUserInRole(UserService.ROLE_DOKTOR)) {
-                return "redirect:/doctor/dashboard"; // Henüz yok ama ileride olacak
+            } else if (request.isUserInRole(UserService.ROLE_DOKTOR)) { // DOKTOR ROLÜ KONTROLÜ
+                return "redirect:/doctor/dashboard"; // DOCTOR DASHBOARD'A YÖNLENDİR
             }
-            return "redirect:/home"; // Varsayılan giriş yapmış kullanıcı sayfası
+            return "redirect:/home";
         }
-        return "redirect:/login"; // Giriş yapmamışsa login'e
+        return "redirect:/login";
     }
 
     @GetMapping("/home")
     public String homePage(HttpServletRequest request) {
-        // Kullanıcının rolüne göre doğru dashboard'a yönlendirme yapabiliriz
-        // Veya genel bir "hoş geldiniz" sayfası gösterebiliriz.
-        // Şimdilik kök dizindeki mantığı tekrar edelim:
-        if (request.isUserInRole(UserService.ROLE_HASTA)) {
-            return "redirect:/patient/dashboard";
-        } else if (request.isUserInRole(UserService.ROLE_DOKTOR)) {
-            return "redirect:/doctor/dashboard";
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
+            if (request.isUserInRole(UserService.ROLE_HASTA)) {
+                return "redirect:/patient/dashboard";
+            } else if (request.isUserInRole(UserService.ROLE_DOKTOR)) { // DOKTOR ROLÜ KONTROLÜ
+                return "redirect:/doctor/dashboard"; // DOCTOR DASHBOARD'A YÖNLENDİR
+            }
+             return "redirect:/login?unknownrole";
         }
-        // Eğer hiçbir role uymuyorsa veya rol bazlı dashboard yoksa genel bir sayfa
-        // return "home"; // home.html (Basit bir hoş geldin sayfası olabilir)
-        return "redirect:/login"; // veya login'e at
+        return "redirect:/login";
     }
 }

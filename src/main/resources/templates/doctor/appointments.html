@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Doktor Randevuları</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Randevularım</h2>
+
+    <div th:if="${param.errorMessage}" class="alert alert-danger" role="alert" th:text="${param.errorMessage}"></div>
+    <div th:if="${param.successMessage}" class="alert alert-success" role="alert" th:text="${param.successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+    <div th:if="${filterError}" class="alert alert-warning" role="alert" th:text="${filterError}"></div>
+
+
+    <!-- Durum Filtresi -->
+    <form th:action="@{/doctor/appointments}" method="get" class="mb-3">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="statusFilter" class="form-label">Duruma Göre Filtrele:</label>
+                <select id="statusFilter" name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tümü</option>
+                    <option th:each="stat : ${allStatuses}"
+                            th:value="${stat.name()}"
+                            th:text="${stat.name()}"
+                            th:selected="${stat.name() == selectedStatus}">
+                    </option>
+                </select>
+            </div>
+        </div>
+    </form>
+
+
+    <div th:if="${#lists.isEmpty(appointments)}" class="alert alert-info mt-3" role="alert">
+        Gösterilecek randevu bulunmamaktadır.
+    </div>
+    <table class="table table-hover mt-3" th:if="${not #lists.isEmpty(appointments)}">
+        <thead class="table-light">
+        <tr>
+            <th>Hasta Adı Soyadı</th>
+            <th>Hasta TC/Kullanıcı Adı</th>
+            <th>Tarih ve Saat</th>
+            <th>Durum</th>
+            <th>Notlar</th>
+            <th>İşlemler</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="app : ${appointments}">
+            <td th:text="${app.patientFirstName + ' ' + app.patientLastName}"></td>
+            <td th:text="${app.patientUsername}"></td>
+            <td th:text="${#temporals.format(app.appointmentDateTime, 'dd MMMM yyyy, HH:mm', new java.util.Locale('tr', 'TR'))}"></td>
+            <td>
+                <span th:switch="${app.status.name()}" class="badge"
+                      th:classappend="${app.status.name() == 'PENDING' ? 'bg-warning text-dark' : (app.status.name() == 'CONFIRMED' ? 'bg-success' : (app.status.name() == 'CANCELLED' or app.status.name() == 'REJECTED' ? 'bg-danger' : 'bg-secondary'))}">
+                    <th:block th:switch="${app.status.name()}">
+                        <span th:case="'PENDING'">Beklemede</span>
+                        <span th:case="'CONFIRMED'">Onaylandı</span>
+                        <span th:case="'CANCELLED'">İptal Edildi</span>
+                        <span th:case="'REJECTED'">Reddedildi</span>
+                        <span th:case="*">Bilinmiyor</span>
+                    </th:block>
+                </span>
+            </td>
+            <td th:text="${app.doctorNotes != null ? app.doctorNotes : '-'}"></td>
+            <td>
+                <a th:href="@{/doctor/appointments/details/{id}(id=${app.id})}" class="btn btn-info btn-sm me-1">
+                    <i class="fas fa-eye"></i> Detay/Not
+                </a>
+                <th:block th:if="${app.status.name() == 'PENDING'}">
+                    <form th:action="@{/doctor/appointments/confirm/{id}(id=${app.id})}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-success btn-sm me-1"><i class="fas fa-check"></i> Onayla</button>
+                    </form>
+                    <form th:action="@{/doctor/appointments/reject/{id}(id=${app.id})}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Reddet</button>
+                    </form>
+                </th:block>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="mt-4">
+        <a th:href="@{/doctor/dashboard}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Panele Dön
+        </a>
+    </div>
+</div>
+</body>
+</html>

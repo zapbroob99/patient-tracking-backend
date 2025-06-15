@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       layout:decorate="~{layout/main-layout}">
 <head>
     <title>Hasta Paneli</title>
@@ -8,19 +9,28 @@
 <body>
 <div layout:fragment="content" class="container mt-4">
     <h2>Hasta Paneli</h2>
-    <p>Hoş geldiniz, <span sec:authentication="principal.username">Kullanıcı</span>!</p> <!-- Giriş yapan kullanıcıyı gösterir -->
+    <p>Hoş geldiniz, <strong sec:authentication="principal.username">Kullanıcı</strong>!</p>
 
-    <div class="list-group">
-        <a th:href="@{/patient/appointments/new}" class="list-group-item list-group-item-action">Yeni Randevu Al</a>
-        <a th:href="@{/patient/appointments/my}" class="list-group-item list-group-item-action">Randevularımı Görüntüle</a>
+    <div class="list-group mt-4">
+        <a th:href="@{/patient/appointments/new}" class="list-group-item list-group-item-action">
+            <i class="fas fa-calendar-plus"></i> Yeni Randevu Al
+        </a>
+        <a th:href="@{/patient/appointments/my}" class="list-group-item list-group-item-action">
+            <i class="fas fa-calendar-check"></i> Randevularımı Görüntüle
+        </a>
         <!-- Diğer hasta işlemleri buraya eklenebilir -->
+        <!-- Örneğin: Profilimi Düzenle, Geçmiş Test Sonuçlarım vb. -->
     </div>
 
-    <h3>Yaklaşan Randevularınız</h3>
-    <table class="table table-striped" th:if="${not #lists.isEmpty(upcomingAppointments)}">
-        <thead>
+    <h3 class="mt-5">Yaklaşan Randevularınız</h3>
+    <div th:if="${#lists.isEmpty(upcomingAppointments)}" class="alert alert-info mt-3" role="alert">
+        Yaklaşan randevunuz bulunmamaktadır.
+    </div>
+    <table class="table table-hover mt-3" th:if="${not #lists.isEmpty(upcomingAppointments)}">
+        <thead class="table-light">
         <tr>
             <th>Doktor</th>
+            <th>Uzmanlık</th>
             <th>Tarih ve Saat</th>
             <th>Durum</th>
         </tr>
@@ -28,13 +38,23 @@
         <tbody>
         <tr th:each="app : ${upcomingAppointments}">
             <td th:text="${app.doctor.user.firstName + ' ' + app.doctor.user.lastName}"></td>
-            <td th:text="${#temporals.format(app.appointmentDateTime, 'dd-MM-yyyy HH:mm')}"></td>
-            <td th:text="${app.status.name()}"></td>
+            <td th:text="${app.doctor.specialization}"></td>
+            <td th:text="${#temporals.format(app.appointmentDateTime, 'dd MMMM yyyy, HH:mm', new java.util.Locale('tr', 'TR'))}"></td>
+            <td>
+                <span th:switch="${app.status.name()}" class="badge"
+                      th:classappend="${app.status.name() == 'PENDING' ? 'bg-warning text-dark' : (app.status.name() == 'CONFIRMED' ? 'bg-success' : (app.status.name() == 'CANCELLED' or app.status.name() == 'REJECTED' ? 'bg-danger' : 'bg-secondary'))}">
+                    <th:block th:switch="${app.status.name()}">
+                        <span th:case="'PENDING'">Beklemede</span>
+                        <span th:case="'CONFIRMED'">Onaylandı</span>
+                        <span th:case="'CANCELLED'">İptal Edildi</span>
+                        <span th:case="'REJECTED'">Reddedildi</span>
+                        <span th:case="*">Bilinmiyor</span>
+                    </th:block>
+                </span>
+            </td>
         </tr>
         </tbody>
     </table>
-    <p th:if="${#lists.isEmpty(upcomingAppointments)}">Yaklaşan randevunuz bulunmamaktadır.</p>
-
 </div>
 </body>
 </html>

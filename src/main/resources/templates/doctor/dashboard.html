@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Doktor Paneli</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Doktor Paneli</h2>
+    <p>Hoş geldiniz, Dr. <strong sec:authentication="principal.username">Kullanıcı</strong>!</p> <!-- principal.username yerine daha iyi bir isim olabilir -->
+
+    <div class="list-group mt-4">
+        <a th:href="@{/doctor/appointments}" class="list-group-item list-group-item-action">
+            <i class="fas fa-calendar-alt"></i> Tüm Randevuları Görüntüle
+        </a>
+        <!-- Diğer doktor işlemleri buraya eklenebilir -->
+    </div>
+
+    <h3 class="mt-5">Bekleyen Randevularınız</h3>
+    <div th:if="${#lists.isEmpty(pendingAppointments)}" class="alert alert-info mt-3" role="alert">
+        Bekleyen randevunuz bulunmamaktadır.
+    </div>
+    <table class="table table-hover mt-3" th:if="${not #lists.isEmpty(pendingAppointments)}">
+        <thead class="table-light">
+        <tr>
+            <th>Hasta</th>
+            <th>Tarih ve Saat</th>
+            <th>İşlemler</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="app : ${pendingAppointments}">
+            <td th:text="${app.patientFirstName + ' ' + app.patientLastName}"></td>
+            <td th:text="${#temporals.format(app.appointmentDateTime, 'dd MMMM yyyy, HH:mm', new java.util.Locale('tr', 'TR'))}"></td>
+            <td>
+                <a th:href="@{/doctor/appointments/details/{id}(id=${app.id})}" class="btn btn-info btn-sm me-1">
+                    <i class="fas fa-eye"></i> Detay
+                </a>
+                <form th:action="@{/doctor/appointments/confirm/{id}(id=${app.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-success btn-sm me-1"><i class="fas fa-check"></i> Onayla</button>
+                </form>
+                <form th:action="@{/doctor/appointments/reject/{id}(id=${app.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Reddet</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

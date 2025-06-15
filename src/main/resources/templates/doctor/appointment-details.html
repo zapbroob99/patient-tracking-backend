@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main-layout}">
+<head>
+    <title>Randevu Detayları</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4">
+    <h2>Randevu Detayları ve Not Ekleme</h2>
+
+    <div th:if="${param.errorMessage}" class="alert alert-danger" role="alert" th:text="${param.errorMessage}"></div>
+    <div th:if="${param.successMessage}" class="alert alert-success" role="alert" th:text="${param.successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+
+
+    <div th:if="${appointment != null}" class="card">
+        <div class="card-header">
+            Randevu ID: <span th:text="${appointment.id}"></span> -
+            Durum:
+            <span th:switch="${appointment.status.name()}" class="badge"
+                  th:classappend="${appointment.status.name() == 'PENDING' ? 'bg-warning text-dark' : (appointment.status.name() == 'CONFIRMED' ? 'bg-success' : (appointment.status.name() == 'CANCELLED' or appointment.status.name() == 'REJECTED' ? 'bg-danger' : 'bg-secondary'))}">
+                 <th:block th:switch="${appointment.status.name()}">
+                    <span th:case="'PENDING'">Beklemede</span>
+                    <span th:case="'CONFIRMED'">Onaylandı</span>
+                    <span th:case="'CANCELLED'">İptal Edildi</span>
+                    <span th:case="'REJECTED'">Reddedildi</span>
+                    <span th:case="*">Bilinmiyor</span>
+                </th:block>
+            </span>
+        </div>
+        <div class="card-body">
+            <p><strong>Hasta:</strong> <span th:text="${appointment.patientFirstName + ' ' + appointment.patientLastName}"></span>
+                (<span th:text="${appointment.patientUsername}"></span>)
+            </p>
+            <p><strong>Randevu Tarihi:</strong>
+                <span th:text="${#temporals.format(appointment.appointmentDateTime, 'dd MMMM yyyy, HH:mm', new java.util.Locale('tr', 'TR'))}"></span>
+            </p>
+
+            <hr>
+            <h4>Doktor Notları</h4>
+            <div th:if="${appointment.doctorNotes != null and not #strings.isEmpty(appointment.doctorNotes)}"
+                 class="alert alert-secondary" role="alert" style="white-space: pre-wrap;" th:text="${appointment.doctorNotes}">
+            </div>
+            <p th:if="${appointment.doctorNotes == null or #strings.isEmpty(appointment.doctorNotes)}">
+                Henüz doktor notu eklenmemiş.
+            </p>
+
+            <form th:if="${appointment.status.name() == 'CONFIRMED' or appointment.status.name() == 'COMPLETED'}"
+                  th:action="@{/doctor/appointments/notes/add/{id}(id=${appointment.id})}"
+                  th:object="${noteDto}" method="post" class="mt-3">
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Yeni Not Ekle/Güncelle:</label>
+                    <textarea id="notes" th:field="*{notes}" class="form-control" rows="4" required></textarea>
+                    <!-- <span th:if="${#fields.hasErrors('notes')}" th:errors="*{notes}" class="text-danger"></span> -->
+                </div>
+                <button type="submit" class="btn btn-primary">Notu Kaydet</button>
+            </form>
+            <p th:unless="${appointment.status.name() == 'CONFIRMED' or appointment.status.name() == 'COMPLETED'}"
+               class="mt-3 text-muted">
+                Sadece 'Onaylandı' veya 'Tamamlandı' durumundaki randevulara not eklenebilir.
+            </p>
+        </div>
+        <div class="card-footer">
+            <a th:href="@{/doctor/appointments}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Randevu Listesine Dön
+            </a>
+        </div>
+    </div>
+    <div th:if="${appointment == null}" class="alert alert-warning">
+        Randevu bulunamadı.
+    </div>
+
+</div>
+</body>
+</html>
